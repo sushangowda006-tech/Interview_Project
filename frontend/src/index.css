@@ -1,0 +1,147 @@
+@import "tailwindcss";
+
+/* ── Global resets ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+/* ── Button transitions ── */
+button {
+    transition: transform 0.15s ease, box-shadow 0.15s ease,
+                background-color 0.15s ease, opacity 0.15s ease,
+                border-color 0.15s ease, color 0.15s ease;
+}
+button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+button:active:not(:disabled) { transform: translateY(0) scale(0.97); box-shadow: none; }
+
+/* ── Input focus ── */
+input { transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+input:focus {
+    outline: none;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+}
+
+/* ── Smooth page transitions ── */
+@keyframes fadeInUp     { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+@keyframes fadeIn       { from { opacity:0; } to { opacity:1; } }
+@keyframes scaleIn      { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
+@keyframes slideInRight { from { opacity:0; transform:translateX(24px); } to { opacity:1; transform:translateX(0); } }
+
+/* Landing page animations */
+@keyframes floatDot     { from { transform:translateY(0px) scale(1); } to { transform:translateY(-28px) scale(1.15); } }
+@keyframes pulseDot     { 0%,100% { box-shadow:0 0 6px #22c55e; opacity:1; } 50% { box-shadow:0 0 14px #22c55e; opacity:0.7; } }
+@keyframes shimmerSlide { 0% { left:-100%; } 100% { left:200%; } }
+@keyframes landEnter    { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
+
+.land-enter        { animation: landEnter 0.7s cubic-bezier(0.22,1,0.36,1) both; }
+.land-enter-delay1 { animation: landEnter 0.7s cubic-bezier(0.22,1,0.36,1) 0.15s both; }
+.land-enter-delay2 { animation: landEnter 0.7s cubic-bezier(0.22,1,0.36,1) 0.28s both; }
+.land-enter-delay3 { animation: landEnter 0.7s cubic-bezier(0.22,1,0.36,1) 0.42s both; }
+
+.page-enter  { animation: fadeInUp 0.35s ease both; }
+.card-enter  { animation: scaleIn  0.3s ease both; }
+.slide-enter { animation: slideInRight 0.3s ease both; }
+
+/* Staggered card delays */
+.card-enter:nth-child(1) { animation-delay: 0.05s; }
+.card-enter:nth-child(2) { animation-delay: 0.10s; }
+.card-enter:nth-child(3) { animation-delay: 0.15s; }
+.card-enter:nth-child(4) { animation-delay: 0.20s; }
+
+/* ── Spinner ── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner    { width:40px; height:40px; border:4px solid #e2e8f0; border-top-color:#3b82f6; border-radius:50%; animation:spin 0.7s linear infinite; }
+.spinner-sm { width:20px; height:20px; border:3px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin 0.7s linear infinite; display:inline-block; }
+
+/* ── Skeleton shimmer ── */
+@keyframes shimmer { 0% { background-position:-600px 0; } 100% { background-position:600px 0; } }
+.skeleton {
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+    background-size: 600px 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 8px;
+}
+
+/* ── Quiz option hover ── */
+.option-btn { transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, background-color 0.12s ease !important; }
+.option-btn:hover:not(:disabled) { transform: translateY(-2px) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.10) !important; }
+
+/* ── Quiz progress bar pulse ── */
+@keyframes progressPulse { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
+.progress-active { animation: progressPulse 1.5s ease infinite; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:#f1f5f9; }
+::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:99px; }
+::-webkit-scrollbar-thumb:hover { background:#94a3b8; }
+
+/* ── Scrollable table wrapper ── */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-scroll::-webkit-scrollbar { height: 4px; }
+
+/* ════════════════════════════════════
+   RESPONSIVE — Tablet (≤ 900px)
+════════════════════════════════════ */
+@media (max-width: 900px) {
+
+    /* Login / Register: stack panels */
+    .auth-screen { flex-direction: column !important; }
+    .auth-left   { display: none !important; }
+    .auth-right  { width: 100% !important; min-height: 100vh; padding: 24px !important; }
+
+    /* Dashboard: hide sidebar */
+    .dash-sidebar { display: none !important; }
+    .dash-body    { flex-direction: column !important; }
+
+    /* Cards: 2 columns */
+    .cards-grid  { grid-template-columns: repeat(2, 1fr) !important; }
+    .stats-grid  { grid-template-columns: repeat(2, 1fr) !important; }
+    .topic-grid  { grid-template-columns: repeat(2, 1fr) !important; }
+    .podium-grid { grid-template-columns: repeat(3, 1fr) !important; }
+    .summary-row { grid-template-columns: repeat(2, 1fr) !important; }
+
+    /* Main padding */
+    .dash-main   { padding: 20px !important; }
+}
+
+/* ════════════════════════════════════
+   RESPONSIVE — Mobile (≤ 600px)
+════════════════════════════════════ */
+@media (max-width: 600px) {
+
+    /* All grids: single column */
+    .cards-grid  { grid-template-columns: 1fr !important; }
+    .stats-grid  { grid-template-columns: 1fr !important; }
+    .topic-grid  { grid-template-columns: 1fr !important; }
+    .podium-grid { grid-template-columns: 1fr !important; }
+    .summary-row { grid-template-columns: 1fr !important; }
+
+    /* Quiz options: single column */
+    .options-grid { grid-template-columns: 1fr !important; }
+
+    /* Navbar: tighter */
+    .navbar-brand-text { display: none !important; }
+    .user-email-text   { display: none !important; }
+    .nav-divider       { display: none !important; }
+
+    /* Welcome section: stack */
+    .welcome-section { flex-direction: column !important; gap: 16px !important; }
+    .welcome-btn     { width: 100% !important; }
+
+    /* Result hero: smaller text */
+    .result-pct   { font-size: 52px !important; }
+    .result-emoji { font-size: 52px !important; }
+
+    /* Leaderboard hero: stack */
+    .hero-right { display: none !important; }
+
+    /* Tables: scroll */
+    .table-wrap { overflow-x: auto !important; min-width: 500px; }
+
+    /* Auth card padding */
+    .auth-card { padding: 28px 20px !important; }
+
+    /* Main padding */
+    .dash-main { padding: 16px !important; }
+}

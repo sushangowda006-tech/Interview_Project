@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 
@@ -110,6 +110,15 @@ const s = {
     optionBtn:    { padding: "14px 18px", borderRadius: "10px", border: "2px solid #e2e8f0", backgroundColor: "#f8fafc", fontSize: "14px", fontWeight: "500", cursor: "pointer", textAlign: "left", transition: "all 0.15s ease", color: "#1e293b" },
     nextBtn:      { alignSelf: "flex-end", backgroundColor: "#3b82f6", color: "#fff", border: "none", padding: "11px 28px", borderRadius: "8px", fontWeight: "700", fontSize: "14px", cursor: "pointer" },
 
+    // Timer
+    timerBar:     { display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "#f8fafc", border: "1.5px solid #e2e8f0", borderRadius: "12px", padding: "12px 20px" },
+    timerNormal:  { display: "flex", alignItems: "center", gap: "8px", fontSize: "15px", fontWeight: "800", color: "#1e293b" },
+    timerWarning: { display: "flex", alignItems: "center", gap: "8px", fontSize: "15px", fontWeight: "800", color: "#f59e0b" },
+    timerDanger:  { display: "flex", alignItems: "center", gap: "8px", fontSize: "15px", fontWeight: "800", color: "#ef4444" },
+    timerTrack:   { flex: 1, height: "6px", backgroundColor: "#e2e8f0", borderRadius: "99px", overflow: "hidden", margin: "0 16px" },
+    timerFill:    { height: "100%", borderRadius: "99px", transition: "width 1s linear, background-color 0.5s ease" },
+    timerExpired: { display: "flex", alignItems: "center", gap: "8px", fontSize: "15px", fontWeight: "800", color: "#ef4444", animation: "fadeInUp 0.3s ease" },
+
     // Result screen
     resultScreen:  { flex: 1, padding: "40px 32px", display: "flex", flexDirection: "column", gap: "24px", maxWidth: "860px", width: "100%", margin: "0 auto" },
     resultHero:    { background: "linear-gradient(135deg, #1e293b 0%, #1d4ed8 100%)", borderRadius: "20px", padding: "48px 40px", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", position: "relative", overflow: "hidden", textAlign: "center" },
@@ -164,25 +173,101 @@ function getOptionStyle(base, label, selected, answered, correctAnswer) {
     return OPTION_COLORS.default;
 }
 
+const QUIZ_DURATION = 5 * 60; // 5 minutes in seconds
+
+// ── Helpers ──
+function formatTime(secs) {
+    const m = String(Math.floor(secs / 60)).padStart(2, "0");
+    const s = String(secs % 60).padStart(2, "0");
+    return `${m}:${s}`;
+}
+
 function Quiz() {
     const navigate = useNavigate();
 
     // ── Topic selection state ──
-    const [topicIdx,  setTopicIdx]  = useState(null);
-    const [hovered,   setHovered]   = useState(null);
+    const [topicIdx,    setTopicIdx]    = useState(null);
+    const [hovered,     setHovered]     = useState(null);
     const [quizStarted, setQuizStarted] = useState(false);
 
     // ── Quiz engine state ──
-    const [questions,  setQuestions]  = useState([]);
-    const [current,    setCurrent]    = useState(0);
-    const [selected,   setSelected]   = useState(null);
-    const [answered,   setAnswered]   = useState(false);
-    const [score,      setScore]      = useState(0);
-    const [finished,   setFinished]   = useState(false);
+    const [questions,   setQuestions]   = useState([]);
+    const [current,     setCurrent]     = useState(0);
+    const [selected,    setSelected]    = useState(null);
+    const [answered,    setAnswered]    = useState(false);
+    const [score,       setScore]       = useState(0);
+    const [finished,    setFinished]    = useState(false);
     const [userAnswers, setUserAnswers] = useState([]);
 
+    // ── Timer state (Step 2) ──
+    const [timeLeft,    setTimeLeft]    = useState(QUIZ_DURATION);
+    const isSubmitted = useRef(false);   // Step 6: prevent double submit
+    const timerRef    = useRef(null);    // holds the interval ID
+
+    // ── Step 3: Start timer when questions load ──
+    useEffect(() => {
+        if (questions.length === 0) return; // not started yet
+
+        isSubmitted.current = false;
+        setTimeLeft(QUIZ_DURATION);
+
+        timerRef.current = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(timerRef.current);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timerRef.current); // cleanup on unmount
+    }, [questions]);
+
+    // ── Step 5: Auto-submit when timeLeft hits 0 ──
+    useEffect(() => {
+        if (timeLeft === 0 && questions.length > 0 && !isSubmitted.current) {
+            isSubmitted.current = true;
+            clearInterval(timerRef.current);
+            autoSubmit();
+        }
+    }, [timeLeft]);
+
+    // ── Auto submit: saves whatever score user has so far ──
+    const autoSubmit = async () => {
+        const currentScore = score;
+        const total        = questions.length;
+        const pct          = Math.round((currentScore / total) * 100);
+
+        const token = localStorage.getItem("token") || "";
+        let email = "User";
+        try { email = JSON.parse(atob(token.split(".")[1])).sub || "User"; } catch {}
+
+        const entry = {
+            name: email, score: pct,
+            topic: TOPICS[topicIdx].name,
+            date: new Date().toLocaleDateString(),
+        };
+        const existing = JSON.parse(localStorage.getItem("leaderboard") || "[]");
+        const filtered  = existing.filter(e => !(e.name === entry.name && e.topic === entry.topic));
+        localStorage.setItem("leaderboard", JSON.stringify([...filtered, entry].sort((a, b) => b.score - a.score)));
+
+        try {
+            await API.post("/results/save", {
+                topic: TOPICS[topicIdx].name,
+                score: currentScore,
+                totalQuestions: total,
+                percentage: pct,
+            });
+        } catch (err) {
+            console.warn("Auto-submit backend save failed:", err.message);
+        }
+
+        setFinished(true);
+    };
+
     const handleStartQuiz = () => {
-        setQuizStarted(true); // show loading
+        setQuizStarted(true);
         setTimeout(() => {
             const qs = QUESTION_BANK[TOPICS[topicIdx].name];
             setQuestions(qs);
@@ -192,6 +277,7 @@ function Quiz() {
             setScore(0);
             setFinished(false);
             setUserAnswers([]);
+            // timer starts via useEffect when questions load
         }, 700);
     };
 
@@ -206,9 +292,13 @@ function Quiz() {
 
     const handleNext = async () => {
         if (current + 1 >= questions.length) {
+            // ── Step 6: prevent double submit ──
+            if (isSubmitted.current) return;
+            isSubmitted.current = true;
+            clearInterval(timerRef.current);
+
             const pct = Math.round((score / questions.length) * 100);
 
-            // ── Save to localStorage ──
             const token = localStorage.getItem("token") || "";
             let email = "User";
             try { email = JSON.parse(atob(token.split(".")[1])).sub || "User"; } catch {}
@@ -222,7 +312,6 @@ function Quiz() {
             const filtered = existing.filter(e => !(e.name === entry.name && e.topic === entry.topic));
             localStorage.setItem("leaderboard", JSON.stringify([...filtered, entry].sort((a, b) => b.score - a.score)));
 
-            // ── Save to backend DB ──
             try {
                 await API.post("/results/save", {
                     topic: TOPICS[topicIdx].name,
@@ -243,9 +332,13 @@ function Quiz() {
     };
 
     const handleRetry = () => {
+        clearInterval(timerRef.current);
+        isSubmitted.current = false;
         setQuizStarted(false);
         setTopicIdx(null);
         setFinished(false);
+        setQuestions([]);
+        setTimeLeft(QUIZ_DURATION);
     };
 
     // ── RESULT SCREEN ──
@@ -253,7 +346,9 @@ function Quiz() {
         const pct        = Math.round((score / questions.length) * 100);
         const wrong      = questions.length - score;
         const emoji      = pct >= 80 ? "🏆" : pct >= 60 ? "👍" : "💪";
-        const message    = pct >= 80 ? "Excellent Work!" : pct >= 60 ? "Good Job!" : "Keep Practicing!";
+        const message    = timeLeft === 0
+            ? "⏰ Time's Up!"
+            : pct >= 80 ? "Excellent Work!" : pct >= 60 ? "Good Job!" : "Keep Practicing!";
         const scoreColor = pct >= 80 ? "#22c55e" : pct >= 60 ? "#f59e0b" : "#ef4444";
         const grade      = pct >= 90 ? "A" : pct >= 80 ? "B" : pct >= 60 ? "C" : "D";
         const correctPct = Math.round((score / questions.length) * 100);
@@ -434,6 +529,37 @@ function Quiz() {
                                 })}
                             </div>
                         </div>
+
+                        {/* ── Step 7: Timer Bar ── */}
+                        {(() => {
+                            const isWarning = timeLeft <= 60 && timeLeft > 10;
+                            const isDanger  = timeLeft <= 10;
+                            const timerPct  = (timeLeft / QUIZ_DURATION) * 100;
+                            const fillColor = isDanger ? "#ef4444" : isWarning ? "#f59e0b" : "#22c55e";
+                            const textStyle = isDanger ? s.timerDanger : isWarning ? s.timerWarning : s.timerNormal;
+                            return (
+                                <div style={{
+                                    ...s.timerBar,
+                                    borderColor: isDanger ? "#fecaca" : isWarning ? "#fde68a" : "#e2e8f0",
+                                    backgroundColor: isDanger ? "#fef2f2" : isWarning ? "#fffbeb" : "#f8fafc",
+                                }}>
+                                    <span style={textStyle}>
+                                        ⏱️ {isDanger && timeLeft > 0 ? "🚨 " : ""}
+                                        Time Left: {formatTime(timeLeft)}
+                                    </span>
+                                    <div style={s.timerTrack}>
+                                        <div style={{
+                                            ...s.timerFill,
+                                            width: `${timerPct}%`,
+                                            backgroundColor: fillColor,
+                                        }} />
+                                    </div>
+                                    <span style={{ fontSize: "12px", color: "#94a3b8", fontWeight: "600", whiteSpace: "nowrap" }}>
+                                        ✅ {score}/{questions.length}
+                                    </span>
+                                </div>
+                            );
+                        })()}
 
                         {/* Question */}
                         <p style={s.qText} className="slide-enter">{current + 1}. {q.q}</p>

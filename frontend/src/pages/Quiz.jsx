@@ -149,6 +149,15 @@ const s = {
     dashBtn:       { backgroundColor: "transparent", color: "#64748b", border: "1.5px solid #e2e8f0", padding: "13px 32px", borderRadius: "8px", fontWeight: "700", fontSize: "14px", cursor: "pointer" },
 };
 
+// ── Difficulty config: timer per level ──
+const DIFFICULTY_CONFIG = {
+    Easy:   { seconds: 8 * 60, color: "#22c55e", bg: "#dcfce7", label: "Easy",   icon: "🟢" },
+    Medium: { seconds: 5 * 60, color: "#f59e0b", bg: "#fef3c7", label: "Medium", icon: "🟡" },
+    Hard:   { seconds: 3 * 60, color: "#ef4444", bg: "#fee2e2", label: "Hard",   icon: "🔴" },
+};
+
+const DIFF_FILTERS = ["All", "Easy", "Medium", "Hard"];
+
 const TOPICS = [
     { icon: "☕", name: "Java OOP",        difficulty: "Medium", iconBg: "#fef3c7", accent: "#f59e0b", diff: { bg: "#fef3c7", color: "#92400e" } },
     { icon: "🌱", name: "Spring Boot",     difficulty: "Hard",   iconBg: "#dcfce7", accent: "#22c55e", diff: { bg: "#fee2e2", color: "#b91c1c" } },
@@ -173,8 +182,6 @@ function getOptionStyle(base, label, selected, answered, correctAnswer) {
     return OPTION_COLORS.default;
 }
 
-const QUIZ_DURATION = 5 * 60; // 5 minutes in seconds
-
 // ── Helpers ──
 function formatTime(secs) {
     const m = String(Math.floor(secs / 60)).padStart(2, "0");
@@ -187,6 +194,7 @@ function Quiz() {
 
     // ── Topic selection state ──
     const [topicIdx,    setTopicIdx]    = useState(null);
+    const [diffFilter,  setDiffFilter]  = useState("All"); // Feature 1
     const [hovered,     setHovered]     = useState(null);
     const [quizStarted, setQuizStarted] = useState(false);
 
@@ -199,32 +207,37 @@ function Quiz() {
     const [finished,    setFinished]    = useState(false);
     const [userAnswers, setUserAnswers] = useState([]);
 
-    // ── Timer state (Step 2) ──
-    const [timeLeft,    setTimeLeft]    = useState(QUIZ_DURATION);
-    const isSubmitted = useRef(false);   // Step 6: prevent double submit
-    const timerRef    = useRef(null);    // holds the interval ID
+    // ── Timer state ──
+    const [timeLeft,    setTimeLeft]    = useState(0);
+    const isSubmitted = useRef(false);
+    const timerRef    = useRef(null);
 
-    // ── Step 3: Start timer when questions load ──
+    // Filtered topics by difficulty
+    const filteredTopics = diffFilter === "All"
+        ? TOPICS
+        : TOPICS.filter(t => t.difficulty === diffFilter);
+
+    // Timer duration based on selected topic difficulty
+    const quizDuration = topicIdx !== null
+        ? DIFFICULTY_CONFIG[TOPICS[topicIdx].difficulty].seconds
+        : 300;
+
+    // ── Start timer when questions load ──
     useEffect(() => {
-        if (questions.length === 0) return; // not started yet
-
+        if (questions.length === 0) return;
         isSubmitted.current = false;
-        setTimeLeft(QUIZ_DURATION);
-
+        const duration = DIFFICULTY_CONFIG[TOPICS[topicIdx].difficulty].seconds;
+        setTimeLeft(duration);
         timerRef.current = setInterval(() => {
             setTimeLeft(prev => {
-                if (prev <= 1) {
-                    clearInterval(timerRef.current);
-                    return 0;
-                }
+                if (prev <= 1) { clearInterval(timerRef.current); return 0; }
                 return prev - 1;
             });
         }, 1000);
-
-        return () => clearInterval(timerRef.current); // cleanup on unmount
+        return () => clearInterval(timerRef.current);
     }, [questions]);
 
-    // ── Step 5: Auto-submit when timeLeft hits 0 ──
+    // ── Auto-submit when time hits 0 ──
     useEffect(() => {
         if (timeLeft === 0 && questions.length > 0 && !isSubmitted.current) {
             isSubmitted.current = true;
@@ -233,51 +246,35 @@ function Quiz() {
         }
     }, [timeLeft]);
 
-    // ── Auto submit: saves whatever score user has so far ──
     const autoSubmit = async () => {
-        const currentScore = score;
-        const total        = questions.length;
-        const pct          = Math.round((currentScore / total) * 100);
+        const pct = Math.round((score / questions.length) * 100);
+        await saveResult(pct, score);
+        setFinished(true);
+    };
 
+    // ── Shared save logic ──
+    const saveResult = async (pct, finalScore) => {
         const token = localStorage.getItem("token") || "";
         let email = "User";
         try { email = JSON.parse(atob(token.split(".")[1])).sub || "User"; } catch {}
-
-        const entry = {
-            name: email, score: pct,
-            topic: TOPICS[topicIdx].name,
-            date: new Date().toLocaleDateString(),
-        };
+        const entry = { name: email, score: pct, topic: TOPICS[topicIdx].name, date: new Date().toLocaleDateString() };
         const existing = JSON.parse(localStorage.getItem("leaderboard") || "[]");
-        const filtered  = existing.filter(e => !(e.name === entry.name && e.topic === entry.topic));
+        const filtered = existing.filter(e => !(e.name === entry.name && e.topic === entry.topic));
         localStorage.setItem("leaderboard", JSON.stringify([...filtered, entry].sort((a, b) => b.score - a.score)));
-
         try {
             await API.post("/results/save", {
-                topic: TOPICS[topicIdx].name,
-                score: currentScore,
-                totalQuestions: total,
-                percentage: pct,
+                topic: TOPICS[topicIdx].name, score: finalScore,
+                totalQuestions: questions.length, percentage: pct,
             });
-        } catch (err) {
-            console.warn("Auto-submit backend save failed:", err.message);
-        }
-
-        setFinished(true);
+        } catch (err) { console.warn("Save failed:", err.message); }
     };
 
     const handleStartQuiz = () => {
         setQuizStarted(true);
         setTimeout(() => {
-            const qs = QUESTION_BANK[TOPICS[topicIdx].name];
-            setQuestions(qs);
-            setCurrent(0);
-            setSelected(null);
-            setAnswered(false);
-            setScore(0);
-            setFinished(false);
-            setUserAnswers([]);
-            // timer starts via useEffect when questions load
+            setQuestions(QUESTION_BANK[TOPICS[topicIdx].name]);
+            setCurrent(0); setSelected(null); setAnswered(false);
+            setScore(0); setFinished(false); setUserAnswers([]);
         }, 700);
     };
 
@@ -292,37 +289,11 @@ function Quiz() {
 
     const handleNext = async () => {
         if (current + 1 >= questions.length) {
-            // ── Step 6: prevent double submit ──
             if (isSubmitted.current) return;
             isSubmitted.current = true;
             clearInterval(timerRef.current);
-
             const pct = Math.round((score / questions.length) * 100);
-
-            const token = localStorage.getItem("token") || "";
-            let email = "User";
-            try { email = JSON.parse(atob(token.split(".")[1])).sub || "User"; } catch {}
-
-            const entry = {
-                name: email, score: pct,
-                topic: TOPICS[topicIdx].name,
-                date: new Date().toLocaleDateString(),
-            };
-            const existing = JSON.parse(localStorage.getItem("leaderboard") || "[]");
-            const filtered = existing.filter(e => !(e.name === entry.name && e.topic === entry.topic));
-            localStorage.setItem("leaderboard", JSON.stringify([...filtered, entry].sort((a, b) => b.score - a.score)));
-
-            try {
-                await API.post("/results/save", {
-                    topic: TOPICS[topicIdx].name,
-                    score: score,
-                    totalQuestions: questions.length,
-                    percentage: pct,
-                });
-            } catch (err) {
-                console.warn("Backend save failed:", err.response?.data || err.message);
-            }
-
+            await saveResult(pct, score);
             setFinished(true);
         } else {
             setCurrent(c => c + 1);
@@ -334,11 +305,8 @@ function Quiz() {
     const handleRetry = () => {
         clearInterval(timerRef.current);
         isSubmitted.current = false;
-        setQuizStarted(false);
-        setTopicIdx(null);
-        setFinished(false);
-        setQuestions([]);
-        setTimeLeft(QUIZ_DURATION);
+        setQuizStarted(false); setTopicIdx(null);
+        setFinished(false); setQuestions([]); setTimeLeft(0);
     };
 
     // ── RESULT SCREEN ──
@@ -464,6 +432,10 @@ function Quiz() {
                     {/* ── Buttons ── */}
                     <div style={s.resultBtns}>
                         <button style={s.retryBtn} onClick={handleRetry}>🔄 Try Another Topic</button>
+                        <button style={{ ...s.retryBtn, backgroundColor: "#7c3aed", boxShadow: "0 4px 14px rgba(124,58,237,0.3)" }}
+                            onClick={() => navigate("/quiz/review", { state: { questions, userAnswers, topic: TOPICS[topicIdx].name } })}>
+                            📖 Review Answers
+                        </button>
                         <button style={s.dashBtn}  onClick={() => navigate("/dashboard")}>🏠 Dashboard</button>
                     </div>
 
@@ -534,7 +506,7 @@ function Quiz() {
                         {(() => {
                             const isWarning = timeLeft <= 60 && timeLeft > 10;
                             const isDanger  = timeLeft <= 10;
-                            const timerPct  = (timeLeft / QUIZ_DURATION) * 100;
+                            const timerPct  = (timeLeft / DIFFICULTY_CONFIG[TOPICS[topicIdx].difficulty].seconds) * 100;
                             const fillColor = isDanger ? "#ef4444" : isWarning ? "#f59e0b" : "#22c55e";
                             const textStyle = isDanger ? s.timerDanger : isWarning ? s.timerWarning : s.timerNormal;
                             return (
@@ -614,35 +586,72 @@ function Quiz() {
 
                 <div>
                     <h1 style={{ fontSize: "26px", fontWeight: "800", color: "#1e293b", margin: "0 0 4px" }}>🧠 Start Quiz</h1>
-                    <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>Choose a topic and test your knowledge</p>
+                    <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>Choose a difficulty and topic, then test your knowledge</p>
                 </div>
 
+                {/* ── Feature 1: Difficulty Filter Tabs ── */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <p style={s.sectionLabel}>🎯 Select Difficulty</p>
+                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                        {DIFF_FILTERS.map(d => {
+                            const cfg = d === "All" ? null : DIFFICULTY_CONFIG[d];
+                            const isActive = diffFilter === d;
+                            return (
+                                <button
+                                    key={d}
+                                    onClick={() => { setDiffFilter(d); setTopicIdx(null); }}
+                                    style={{
+                                        padding: "8px 20px", borderRadius: "99px", border: "2px solid",
+                                        fontWeight: "700", fontSize: "13px", cursor: "pointer",
+                                        borderColor: isActive ? (cfg?.color || "#3b82f6") : "#e2e8f0",
+                                        backgroundColor: isActive ? (cfg?.bg || "#eff6ff") : "#ffffff",
+                                        color: isActive ? (cfg?.color || "#1d4ed8") : "#64748b",
+                                    }}
+                                >
+                                    {cfg ? `${cfg.icon} ${d} (${Math.floor(cfg.seconds/60)} min)` : "📚 All Topics"}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Topic Grid */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                    <p style={s.sectionLabel}>📚 Select a Topic</p>
+                    <p style={s.sectionLabel}>📚 Select a Topic ({filteredTopics.length} available)</p>
                     <div style={s.topicGrid} className="topic-grid">
-                        {TOPICS.map((topic, i) => (
-                            <div
-                                key={topic.name}
-                                className="card-enter"
-                                style={{
-                                    ...s.topicCard,
-                                    borderColor: topicIdx === i ? topic.accent : hovered === i ? topic.accent : "#e2e8f0",
-                                    backgroundColor: topicIdx === i ? topic.iconBg : "#ffffff",
-                                    transform: hovered === i ? "translateY(-4px) scale(1.01)" : "none",
-                                    boxShadow: topicIdx === i || hovered === i ? "0 8px 24px rgba(0,0,0,0.10)" : "0 1px 4px rgba(0,0,0,0.07)",
-                                }}
-                                onClick={() => setTopicIdx(i)}
-                                onMouseEnter={() => setHovered(i)}
-                                onMouseLeave={() => setHovered(null)}
-                            >
-                                <div style={{ ...s.topicIconWrap, backgroundColor: topic.iconBg }}>{topic.icon}</div>
-                                <p style={{ ...s.topicName, color: topicIdx === i ? topic.accent : "#1e293b" }}>{topic.name}</p>
-                                <div style={s.topicMeta}>
-                                    <span style={s.topicQCount}>📝 {QUESTION_BANK[topic.name].length} questions</span>
-                                    <span style={{ ...s.diffBadge, backgroundColor: topic.diff.bg, color: topic.diff.color }}>{topic.difficulty}</span>
+                        {filteredTopics.map((topic) => {
+                            const i = TOPICS.indexOf(topic);
+                            const cfg = DIFFICULTY_CONFIG[topic.difficulty];
+                            return (
+                                <div
+                                    key={topic.name}
+                                    className="card-enter"
+                                    style={{
+                                        ...s.topicCard,
+                                        borderColor: topicIdx === i ? topic.accent : hovered === i ? topic.accent : "#e2e8f0",
+                                        backgroundColor: topicIdx === i ? topic.iconBg : "#ffffff",
+                                        transform: hovered === i ? "translateY(-4px) scale(1.01)" : "none",
+                                        boxShadow: topicIdx === i || hovered === i ? "0 8px 24px rgba(0,0,0,0.10)" : "0 1px 4px rgba(0,0,0,0.07)",
+                                    }}
+                                    onClick={() => setTopicIdx(i)}
+                                    onMouseEnter={() => setHovered(i)}
+                                    onMouseLeave={() => setHovered(null)}
+                                >
+                                    <div style={{ ...s.topicIconWrap, backgroundColor: topic.iconBg }}>{topic.icon}</div>
+                                    <p style={{ ...s.topicName, color: topicIdx === i ? topic.accent : "#1e293b" }}>{topic.name}</p>
+                                    <div style={s.topicMeta}>
+                                        <span style={s.topicQCount}>📝 {QUESTION_BANK[topic.name].length} questions</span>
+                                        <span style={{ ...s.diffBadge, backgroundColor: topic.diff.bg, color: topic.diff.color }}>
+                                            {cfg.icon} {topic.difficulty}
+                                        </span>
+                                    </div>
+                                    {/* Timer info per topic */}
+                                    <span style={{ fontSize: "11px", color: cfg.color, fontWeight: "600" }}>
+                                        ⏱️ {Math.floor(cfg.seconds / 60)} min timer
+                                    </span>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -650,7 +659,9 @@ function Quiz() {
                     <div style={{ backgroundColor: "#eff6ff", border: "1.5px solid #bfdbfe", borderRadius: "10px", padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <div>
                             <p style={{ fontSize: "14px", fontWeight: "700", color: "#1d4ed8", margin: 0 }}>✅ Selected: {TOPICS[topicIdx].name}</p>
-                            <p style={{ fontSize: "12px", color: "#3b82f6", margin: 0 }}>{QUESTION_BANK[TOPICS[topicIdx].name].length} questions · {TOPICS[topicIdx].difficulty} difficulty</p>
+                            <p style={{ fontSize: "12px", color: "#3b82f6", margin: 0 }}>
+                                {QUESTION_BANK[TOPICS[topicIdx].name].length} questions · {TOPICS[topicIdx].difficulty} · ⏱️ {Math.floor(DIFFICULTY_CONFIG[TOPICS[topicIdx].difficulty].seconds / 60)} min
+                            </p>
                         </div>
                         <span style={{ fontSize: "22px" }}>{TOPICS[topicIdx].icon}</span>
                     </div>

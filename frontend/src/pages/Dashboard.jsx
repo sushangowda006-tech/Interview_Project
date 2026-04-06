@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { updateStreak, getStreak } from "../utils/streak";
 
 // Decode JWT payload without any library
 function parseToken(token) {
@@ -480,38 +481,32 @@ const ACTION_CARDS = [
     {
         icon: "🧠",
         title: "Start Quiz",
-        desc: "Pick a topic and test your skills with timed questions.",
-        color: "#eff6ff",
-        iconBg: "#dbeafe",
-        accent: "#3b82f6",
-        path: "/quiz",
+        desc: "Pick a topic and difficulty, then test your skills.",
+        color: "#eff6ff", iconBg: "#dbeafe", accent: "#3b82f6", path: "/quiz",
     },
     {
         icon: "📊",
         title: "My Results",
         desc: "Review your past scores and track your progress.",
-        color: "#f0fdf4",
-        iconBg: "#dcfce7",
-        accent: "#22c55e",
-        path: "/results",
+        color: "#f0fdf4", iconBg: "#dcfce7", accent: "#22c55e", path: "/results",
     },
     {
         icon: "🏆",
         title: "Leaderboard",
         desc: "See how you rank against other candidates.",
-        color: "#fffbeb",
-        iconBg: "#fef3c7",
-        accent: "#f59e0b",
-        path: "/leaderboard",
+        color: "#fffbeb", iconBg: "#fef3c7", accent: "#f59e0b", path: "/leaderboard",
+    },
+    {
+        icon: "📈",
+        title: "Score History",
+        desc: "View your score trend chart and topic breakdown.",
+        color: "#eff6ff", iconBg: "#dbeafe", accent: "#0ea5e9", path: "/score-history",
     },
     {
         icon: "👤",
         title: "Profile",
-        desc: "Update your info and manage your account settings.",
-        color: "#fdf4ff",
-        iconBg: "#f3e8ff",
-        accent: "#a855f7",
-        path: "/profile",
+        desc: "Update your info, view streak and topic performance.",
+        color: "#fdf4ff", iconBg: "#f3e8ff", accent: "#a855f7", path: "/profile",
     },
 ];
 
@@ -579,7 +574,12 @@ function Dashboard() {
     const initial = email ? email[0].toUpperCase() : "U";
     const [hoveredCard, setHoveredCard] = useState(null);
     const [hoveredStat, setHoveredStat] = useState(null);
-    const [hoveredRow, setHoveredRow] = useState(null);
+    const [hoveredRow,  setHoveredRow]  = useState(null);
+    const [streak,      setStreak]      = useState({ streak: 0, longest: 0 });
+
+    useEffect(() => {
+        setStreak(updateStreak());
+    }, []);
 
     const handleLogout = () => {
         localStorage.removeItem("token");
@@ -661,6 +661,19 @@ function Dashboard() {
                                 <span>🎯</span>
                                 Ready to test your knowledge? Let's get started.
                             </p>
+                            {/* Streak badge */}
+                            {streak.streak > 0 && (
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
+                                    <span style={{ backgroundColor: "rgba(251,191,36,0.2)", border: "1px solid rgba(251,191,36,0.4)", color: "#fbbf24", padding: "4px 12px", borderRadius: "99px", fontSize: "13px", fontWeight: "700", zIndex: 1 }}>
+                                        🔥 {streak.streak} day streak!
+                                    </span>
+                                    {streak.streak >= 7 && (
+                                        <span style={{ backgroundColor: "rgba(168,85,247,0.2)", border: "1px solid rgba(168,85,247,0.4)", color: "#c084fc", padding: "4px 12px", borderRadius: "99px", fontSize: "12px", fontWeight: "700", zIndex: 1 }}>
+                                            🏆 Week Warrior!
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Right CTA button */}

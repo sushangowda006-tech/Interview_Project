@@ -1,13 +1,12 @@
 package com.example.interview.controller;
 
-import com.example.interview.dto.UserResultDTO;
+import com.example.interview.entity.Result;
 import com.example.interview.entity.User;
 import com.example.interview.repository.ResultRepository;
 import com.example.interview.repository.UserRepository;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.*;
 
 @RestController
 @RequestMapping("/admin")
@@ -16,24 +15,31 @@ public class AdminController {
     private final UserRepository userRepository;
     private final ResultRepository resultRepository;
 
-    public AdminController(UserRepository userRepository, ResultRepository resultRepository) {
-        this.userRepository   = userRepository;
+    public AdminController(UserRepository userRepository,
+                           ResultRepository resultRepository) {
+        this.userRepository = userRepository;
         this.resultRepository = resultRepository;
     }
 
-    // Returns every USER (not ADMIN) with their full results list
+    // ✅ All users with their quiz results — used by AdminDashboard
     @GetMapping("/users-with-results")
-    public List<UserResultDTO> getUsersWithResults() {
-        List<User> users = userRepository.findAll().stream()
-                .filter(u -> "USER".equals(u.getRole()))
-                .collect(Collectors.toList());
+    public List<Map<String, Object>> getUsersWithResults() {
 
-        return users.stream().map(u -> new UserResultDTO(
-                u.getId(),
-                u.getName(),
-                u.getEmail(),
-                u.getRole(),
-                resultRepository.findByUserId(u.getId())
-        )).collect(Collectors.toList());
+        List<User> users = userRepository.findAll();
+        List<Map<String, Object>> response = new ArrayList<>();
+
+        for (User user : users) {
+            List<Result> results = resultRepository.findByUserId(user.getId());
+
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("id",      user.getId());
+            entry.put("name",    user.getName());
+            entry.put("email",   user.getEmail());
+            entry.put("role",    user.getRole());
+            entry.put("results", results);
+            response.add(entry);
+        }
+
+        return response;
     }
 }

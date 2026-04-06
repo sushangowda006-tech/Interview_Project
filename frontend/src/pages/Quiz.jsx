@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import API from "../services/api";
 
 // ── Prebuilt Questions ──────────────────────────────────────────
 const QUESTION_BANK = {
@@ -203,26 +204,36 @@ function Quiz() {
         setUserAnswers(prev => [...prev, { label, correct }]);
     };
 
-    const handleNext = () => {
+    const handleNext = async () => {
         if (current + 1 >= questions.length) {
-            const finalScore = score + (userAnswers[current]?.correct ? 0 : 0); // score already updated
             const pct = Math.round((score / questions.length) * 100);
-            // Save to leaderboard in localStorage
+
+            // ── Save to localStorage ──
             const token = localStorage.getItem("token") || "";
             let email = "User";
             try { email = JSON.parse(atob(token.split(".")[1])).sub || "User"; } catch {}
+
             const entry = {
-                name: email,
-                score: pct,
+                name: email, score: pct,
                 topic: TOPICS[topicIdx].name,
                 date: new Date().toLocaleDateString(),
-                color: "#3b82f6",
             };
             const existing = JSON.parse(localStorage.getItem("leaderboard") || "[]");
-            // Keep only best score per user+topic
             const filtered = existing.filter(e => !(e.name === entry.name && e.topic === entry.topic));
-            const updated  = [...filtered, entry].sort((a, b) => b.score - a.score);
-            localStorage.setItem("leaderboard", JSON.stringify(updated));
+            localStorage.setItem("leaderboard", JSON.stringify([...filtered, entry].sort((a, b) => b.score - a.score)));
+
+            // ── Save to backend DB ──
+            try {
+                await API.post("/results/save", {
+                    topic: TOPICS[topicIdx].name,
+                    score: score,
+                    totalQuestions: questions.length,
+                    percentage: pct,
+                });
+            } catch (err) {
+                console.warn("Backend save failed:", err.response?.data || err.message);
+            }
+
             setFinished(true);
         } else {
             setCurrent(c => c + 1);

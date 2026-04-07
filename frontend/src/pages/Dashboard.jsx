@@ -579,9 +579,18 @@ function Dashboard() {
     const [hoveredRow,  setHoveredRow]  = useState(null);
     const [streak,      setStreak]      = useState({ streak: 0, longest: 0 });
 
-    useEffect(() => {
-        setStreak(updateStreak());
-    }, []);
+    useEffect(() => { setStreak(updateStreak()); }, []);
+
+    // ── Dynamic theme colors ──
+    const t = {
+        bg:       dark ? "#0f172a" : "#f1f5f9",
+        surface:  dark ? "#1e293b" : "#ffffff",
+        surface2: dark ? "#0f172a" : "#f8fafc",
+        border:   dark ? "#334155" : "#e2e8f0",
+        text:     dark ? "#f1f5f9" : "#1e293b",
+        textMuted:dark ? "#94a3b8" : "#64748b",
+        sidebar:  dark ? "#0f172a" : "#1e293b",
+    };
 
     const handleLogout = () => {
         localStorage.removeItem("token");
@@ -589,7 +598,7 @@ function Dashboard() {
     };
 
     return (
-        <div style={styles.screen}>
+        <div style={{ ...styles.screen, backgroundColor: t.bg, transition: "background-color 0.3s ease" }}>
 
             {/* ── Navbar ── */}
             <nav style={styles.navbar}>
@@ -634,7 +643,7 @@ function Dashboard() {
             <div style={styles.body} className="dash-body">
 
                 {/* ── Sidebar ── */}
-                <aside style={styles.sidebar} className="dash-sidebar">
+                <aside style={{ ...styles.sidebar, backgroundColor: t.sidebar }} className="dash-sidebar">
                     {NAV_ITEMS.map((item) => (
                         <div
                             key={item.label}
@@ -651,8 +660,8 @@ function Dashboard() {
 
                     {/* Page heading */}
                     <div>
-                        <h1 style={styles.pageTitle}>Dashboard</h1>
-                        <p style={styles.pageSubtitle}>Here's what's happening today</p>
+                        <h1 style={{ ...styles.pageTitle, color: t.text }}>Dashboard</h1>
+                        <p style={{ ...styles.pageSubtitle, color: t.textMuted }}>Here's what's happening today</p>
                     </div>
 
                     {/* ── Welcome Section ── */}
@@ -696,7 +705,7 @@ function Dashboard() {
 
                     {/* ── Action Cards ── */}
                     <div style={styles.cardsSection}>
-                        <p style={styles.cardsSectionTitle}>What would you like to do?</p>
+                        <p style={{ ...styles.cardsSectionTitle, color: t.text }}>What would you like to do?</p>
                         <div style={styles.cardsGrid} className="cards-grid">
                             {ACTION_CARDS.map((card, i) => (
                                 <div
@@ -704,8 +713,8 @@ function Dashboard() {
                                     className="card-enter"
                                     style={{
                                         ...styles.card,
-                                        backgroundColor: card.color,
-                                        borderColor: hoveredCard === i ? card.accent : "#e2e8f0",
+                                        backgroundColor: dark ? t.surface : card.color,
+                                        borderColor: hoveredCard === i ? card.accent : t.border,
                                         transform: hoveredCard === i ? "translateY(-6px) scale(1.02)" : "none",
                                         boxShadow: hoveredCard === i
                                             ? `0 12px 28px rgba(0,0,0,0.12)`
@@ -735,7 +744,7 @@ function Dashboard() {
 
                     {/* ── Quick Stats ── */}
                     <div style={styles.statsSection}>
-                        <p style={styles.statsSectionTitle}>📊 Quick Stats</p>
+                        <p style={{ ...styles.statsSectionTitle, color: t.text }}>📊 Quick Stats</p>
                         <div style={styles.statsGrid} className="stats-grid">
                             {STATS.map((stat, i) => (
                                 <div
@@ -743,7 +752,8 @@ function Dashboard() {
                                     className="card-enter"
                                     style={{
                                         ...styles.statCard,
-                                        borderColor: hoveredStat === i ? stat.accent : "#e2e8f0",
+                                        backgroundColor: t.surface,
+                                        borderColor: hoveredStat === i ? stat.accent : t.border,
                                         transform: hoveredStat === i ? "translateY(-4px)" : "none",
                                         boxShadow: hoveredStat === i
                                             ? `0 10px 24px rgba(0,0,0,0.10)`
@@ -784,11 +794,11 @@ function Dashboard() {
                     <div style={styles.activitySection}>
 
                         <div style={styles.activityHeader}>
-                            <p style={styles.activityTitle}>🕒 Recent Activity</p>
+                            <p style={{ ...styles.activityTitle, color: t.text }}>🕒 Recent Activity</p>
                             <button style={styles.activityViewAll}>View All →</button>
                         </div>
 
-                        <div style={styles.activityCard}>
+                        <div style={{ ...styles.activityCard, backgroundColor: t.surface, borderColor: t.border }}>
                             {RECENT_ACTIVITY.map((item, i) => {
                                 const passed = item.score >= 75;
                                 const scoreColor = item.score >= 85 ? "#22c55e"
@@ -805,7 +815,7 @@ function Dashboard() {
                                         <div
                                             style={{
                                                 ...styles.activityRow,
-                                                backgroundColor: hoveredRow === i ? "#f8fafc" : "#ffffff",
+                                                backgroundColor: hoveredRow === i ? t.surface2 : t.surface,
                                             }}
                                             onMouseEnter={() => setHoveredRow(i)}
                                             onMouseLeave={() => setHoveredRow(null)}
@@ -817,7 +827,7 @@ function Dashboard() {
 
                                             {/* Topic + Date */}
                                             <div style={styles.activityInfo}>
-                                                <span style={styles.activityTopic}>{item.topic}</span>
+                                                <span style={{ ...styles.activityTopic, color: t.text }}>{item.topic}</span>
                                                 <span style={styles.activityDate}>📅 {item.date}</span>
                                             </div>
 

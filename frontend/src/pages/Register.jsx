@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import API from "../services/api";
 import { getErrorMessage } from "../utils/errorHandler";
+import { useToast } from "../utils/toast";
 
 const s = {
     screen:      { display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', sans-serif", background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)" },
@@ -70,25 +71,26 @@ function Register() {
     const [success, setSuccess] = useState("");
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    const toast    = useToast();
 
     const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
     const handleRegister = async (e) => {
         e.preventDefault();
         setError(""); setSuccess("");
-
-        // Client-side validation
-        if (!form.name.trim())              return setError("❌ Please enter your full name.");
-        if (!form.email.trim())             return setError("❌ Please enter your email.");
-        if (form.password.length < 6)       return setError("❌ Password must be at least 6 characters.");
-
+        if (!form.name.trim())        return setError("❌ Please enter your full name.");
+        if (!form.email.trim())       return setError("❌ Please enter your email.");
+        if (form.password.length < 6) return setError("❌ Password must be at least 6 characters.");
         setLoading(true);
         try {
             await API.post("/auth/register", form);
+            toast("Account created successfully! 🎉", "success");
             setSuccess("✅ Account created! Redirecting to login...");
             setTimeout(() => navigate("/login"), 1200);
         } catch (err) {
-            setError(getErrorMessage(err));
+            const msg = getErrorMessage(err);
+            setError(msg);
+            toast(msg, "error");
         } finally {
             setLoading(false);
         }

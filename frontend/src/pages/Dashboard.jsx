@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { updateStreak, getStreak } from "../utils/streak";
+import { useDarkMode } from "../utils/darkMode";
 
 // Decode JWT payload without any library
 function parseToken(token) {
@@ -572,6 +573,7 @@ function Dashboard() {
     const token = localStorage.getItem("token") || "";
     const { email, role } = parseToken(token);
     const initial = email ? email[0].toUpperCase() : "U";
+    const { dark, toggle } = useDarkMode();
     const [hoveredCard, setHoveredCard] = useState(null);
     const [hoveredStat, setHoveredStat] = useState(null);
     const [hoveredRow,  setHoveredRow]  = useState(null);
@@ -609,6 +611,15 @@ function Dashboard() {
                         <span style={styles.userEmail}>{email || "User"}</span>
                         <span style={styles.userRole}>{role}</span>
                     </div>
+
+                    {/* Dark Mode Toggle */}
+                    <button
+                        onClick={toggle}
+                        style={{ backgroundColor: "transparent", border: "1.5px solid #334155", color: "#94a3b8", padding: "7px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "16px" }}
+                        title={dark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                    >
+                        {dark ? "☀️" : "🌙"}
+                    </button>
 
                     <div style={styles.navDivider} />
 

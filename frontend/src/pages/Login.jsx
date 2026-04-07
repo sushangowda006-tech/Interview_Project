@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import API from "../services/api";
 import { getErrorMessage } from "../utils/errorHandler";
+import { useToast } from "../utils/toast";
 
 const s = {
     screen: {
@@ -63,26 +64,25 @@ function Login() {
     const [success,  setSuccess]  = useState("");
     const [loading,  setLoading]  = useState(false);
     const navigate = useNavigate();
+    const toast    = useToast();
 
     const handleLogin = async (e) => {
         e.preventDefault();
         setError(""); setSuccess("");
-
         if (!email.trim())    return setError("❌ Please enter your email.");
         if (!password.trim()) return setError("❌ Please enter your password.");
-
         setLoading(true);
         try {
             const res = await API.post("/auth/login", { email, password });
             const token = res.data.token;
             localStorage.setItem("token", token);
-
-            // Decode role from JWT payload
             const { role } = JSON.parse(atob(token.split(".")[1]));
-            setSuccess("✅ Login successful! Redirecting...");
+            toast("Login successful! Welcome back 🎉", "success");
             setTimeout(() => navigate(role === "ADMIN" ? "/admin" : "/dashboard"), 900);
         } catch (err) {
-            setError(getErrorMessage(err));
+            const msg = getErrorMessage(err);
+            setError(msg);
+            toast(msg, "error");
         } finally {
             setLoading(false);
         }

@@ -81,12 +81,12 @@ const s = {
 
 function Leaderboard() {
     const navigate  = useNavigate();
-    const [hovered, setHovered] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [leaders, setLeaders] = useState([]);
+    const [hovered,    setHovered]    = useState(null);
+    const [loading,    setLoading]    = useState(true);
+    const [leaders,    setLeaders]    = useState([]);
+    const [topicFilter, setTopicFilter] = useState("All"); // Feature 6
 
     useEffect(() => {
-        // Simulate brief load for smooth UX
         const timer = setTimeout(() => {
             const data = JSON.parse(localStorage.getItem("leaderboard") || "[]");
             setLeaders(data);
@@ -95,10 +95,14 @@ function Leaderboard() {
         return () => clearTimeout(timer);
     }, []);
 
-    const isEmpty   = leaders.length === 0;
-    const topScore  = isEmpty ? 0 : leaders[0].score;
-    const avgScore  = isEmpty ? 0 : Math.round(leaders.reduce((a, l) => a + l.score, 0) / leaders.length);
-    const total     = leaders.length;
+    // Feature 6: filter by topic
+    const allTopics  = ["All", ...new Set(leaders.map(l => l.topic))];
+    const filtered   = topicFilter === "All" ? leaders : leaders.filter(l => l.topic === topicFilter);
+
+    const isEmpty   = filtered.length === 0;
+    const topScore  = isEmpty ? 0 : filtered[0].score;
+    const avgScore  = isEmpty ? 0 : Math.round(filtered.reduce((a, l) => a + l.score, 0) / filtered.length);
+    const total     = filtered.length;
 
     return (
         <div style={s.screen}>
@@ -120,6 +124,21 @@ function Leaderboard() {
                         <div className="skeleton" style={{ height: "300px" }} />
                     </div>
                 ) : (<>
+
+                {/* Feature 6: Topic Filter Tabs */}
+                {!isEmpty && (
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                        {allTopics.map(t => (
+                            <button key={t} onClick={() => setTopicFilter(t)} style={{
+                                padding: "7px 16px", borderRadius: "99px", border: "1.5px solid",
+                                fontWeight: "600", fontSize: "12px", cursor: "pointer",
+                                borderColor: topicFilter === t ? "#3b82f6" : "#e2e8f0",
+                                backgroundColor: topicFilter === t ? "#eff6ff" : "#ffffff",
+                                color: topicFilter === t ? "#1d4ed8" : "#64748b",
+                            }}>{t === "All" ? "🌐 All Topics" : t}</button>
+                        ))}
+                    </div>
+                )}
 
                 {/* Hero Banner */}
                 <div style={s.hero}>
@@ -178,11 +197,11 @@ function Leaderboard() {
                         </div>
 
                         {/* Top 3 Podium */}
-                        {leaders.length >= 3 && (
+                        {filtered.length >= 3 && (
                             <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                                 <p style={s.sectionLabel}>🎖️ Top 3 Podium</p>
                                 <div style={s.podiumGrid} className="podium-grid">
-                                    {leaders.slice(0, 3).map((l, i) => (
+                                    {filtered.slice(0, 3).map((l, i) => (
                                         <div key={l.name + i} className="card-enter" style={{
                                             ...s.podiumCard,
                                             backgroundColor: PODIUM_BG[i],
@@ -215,7 +234,7 @@ function Leaderboard() {
                                     <span style={s.tableHCell}>Date</span>
                                     <span style={s.tableHCell}>Performance</span>
                                 </div>
-                                {leaders.map((l, i) => {
+                                {filtered.map((l, i) => {
                                     const scoreColor = getScoreColor(l.score);
                                     const avatarColor = getAvatarColor(l.name);
                                     return (

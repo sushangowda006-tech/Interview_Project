@@ -84,6 +84,7 @@ function scoreLabel(p) { return p >= 75 ? "Pass" : "Fail"; }
 const TABS = [
     { icon: "🏠", label: "Overview" },
     { icon: "👥", label: "Users & Results" },
+    { icon: "📝", label: "Questions" },
 ];
 
 function AdminDashboard() {
@@ -96,14 +97,61 @@ function AdminDashboard() {
     const [users,      setUsers]      = useState([]);
     const [loading,    setLoading]    = useState(true);
     const [error,      setError]      = useState("");
-    const [selected,   setSelected]   = useState(null); // user whose results are shown
+    const [selected,   setSelected]   = useState(null);
     const [hoveredRow, setHoveredRow] = useState(null);
+
+    // Feature 10: Questions state
+    const [questions,  setQuestions]  = useState([]);
+    const [qLoading,   setQLoading]   = useState(false);
+    const [editQ,      setEditQ]      = useState(null); // question being edited
+    const [showForm,   setShowForm]   = useState(false);
+    const EMPTY_Q = { topic: "", questionTitle: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A" };
+    const [qForm,      setQForm]      = useState(EMPTY_Q);
+    const [qMsg,       setQMsg]       = useState("");
 
     useEffect(() => {
         API.get("/admin/users-with-results")
             .then(res => { setUsers(res.data); setLoading(false); })
             .catch(() => { setError("Failed to load data."); setLoading(false); });
     }, []);
+
+    // Load questions when tab 2 selected
+    useEffect(() => {
+        if (tab === 2) {
+            setQLoading(true);
+            API.get("/admin/questions")
+                .then(res => { setQuestions(res.data); setQLoading(false); })
+                .catch(() => setQLoading(false));
+        }
+    }, [tab]);
+
+    const handleQSave = async () => {
+        try {
+            if (editQ) {
+                await API.put(`/admin/questions/${editQ.id}`, qForm);
+                setQMsg("✅ Question updated!");
+            } else {
+                await API.post("/admin/questions", qForm);
+                setQMsg("✅ Question added!");
+            }
+            setShowForm(false); setEditQ(null); setQForm(EMPTY_Q);
+            const res = await API.get("/admin/questions");
+            setQuestions(res.data);
+        } catch { setQMsg("❌ Failed to save."); }
+        setTimeout(() => setQMsg(""), 3000);
+    };
+
+    const handleQDelete = async (id) => {
+        if (!window.confirm("Delete this question?")) return;
+        await API.delete(`/admin/questions/${id}`);
+        setQuestions(prev => prev.filter(q => q.id !== id));
+    };
+
+    const openEdit = (q) => {
+        setEditQ(q);
+        setQForm({ topic: q.topic || "", questionTitle: q.questionTitle, optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD, correctAnswer: q.correctAnswer });
+        setShowForm(true);
+    };
 
     const handleLogout = () => { localStorage.removeItem("token"); navigate("/", { replace: true }); };
 
@@ -335,6 +383,69 @@ function AdminDashboard() {
                                 })()}
                             </div>
                         )}
+                    </>)}
+
+                    {/* ── QUESTIONS TAB ── */}
+                    {tab === 2 && (<>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <div>
+                                <h2 style={{ fontSize: "22px", fontWeight: "800", color: "#1e293b", margin: "0 0 4px" }}>📝 Manage Questions</h2>
+                                <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>{questions.length} questions in database</p>
+                            </div>
+                            <button onClick={() => { setEditQ(null); setQForm(EMPTY_Q); setShowForm(true); }}
+                                style={{ backgroundColor: "#7c3aed", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "8px", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}>
+                                + Add Question
+                            </button>
+                        </div>
+
+                        {qMsg && <div style={{ backgroundColor: qMsg.startsWith("✅") ? "#f0fdf4" : "#fef2f2", border: `1px solid ${qMsg.startsWith("✅") ? "#bbf7d0" : "#fecaca"}`, color: qMsg.startsWith("✅") ? "#15803d" : "#b91c1c", padding: "12px 16px", borderRadius: "8px", fontSize: "13px", fontWeight: "600" }}>{qMsg}</div>}
+
+                        {/* Add/Edit Form */}
+                        {showForm && (
+                            <div style={{ backgroundColor: "#fff", borderRadius: "14px", padding: "24px", border: "1.5px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "12px" }}>
+                                <h3 style={{ fontSize: "16px", fontWeight: "700", color: "#1e293b", margin: 0 }}>{editQ ? "✏️ Edit Question" : "+ New Question"}</h3>
+                                {[["topic", "Topic (e.g. Java OOP)"], ["questionTitle", "Question"], ["optionA", "Option A"], ["optionB", "Option B"], ["optionC", "Option C"], ["optionD", "Option D"]].map(([key, label]) => (
+                                    <div key={key}>
+                                        <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "4px" }}>{label}</label>
+                                        <input value={qForm[key]} onChange={e => setQForm(f => ({ ...f, [key]: e.target.value }))}
+                                            style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #e2e8f0", borderRadius: "8px", fontSize: "14px", outline: "none", boxSizing: "border-box" }} />
+                                    </div>
+                                ))}
+                                <div>
+                                    <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "4px" }}>Correct Answer</label>
+                                    <select value={qForm.correctAnswer} onChange={e => setQForm(f => ({ ...f, correctAnswer: e.target.value }))}
+                                        style={{ padding: "10px 12px", border: "1.5px solid #e2e8f0", borderRadius: "8px", fontSize: "14px", outline: "none" }}>
+                                        {["A","B","C","D"].map(o => <option key={o} value={o}>{o}</option>)}
+                                    </select>
+                                </div>
+                                <div style={{ display: "flex", gap: "10px" }}>
+                                    <button onClick={handleQSave} style={{ backgroundColor: "#7c3aed", color: "#fff", border: "none", padding: "10px 24px", borderRadius: "8px", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}>Save</button>
+                                    <button onClick={() => { setShowForm(false); setEditQ(null); }} style={{ backgroundColor: "#f1f5f9", color: "#64748b", border: "none", padding: "10px 24px", borderRadius: "8px", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}>Cancel</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Questions Table */}
+                        <div style={s.tableWrap}>
+                            <div style={{ ...s.tableHead, gridTemplateColumns: "50px 1fr 1.5fr 80px 100px" }}>
+                                {["#", "Topic", "Question", "Answer", "Actions"].map(h => <span key={h} style={s.tableHCell}>{h}</span>)}
+                            </div>
+                            {qLoading ? <div style={s.spinner}>Loading...</div>
+                            : questions.length === 0 ? <div style={s.emptyBox}>No questions yet. Add one above.</div>
+                            : questions.map((q, i) => (
+                                <div key={q.id} style={{ ...s.tableRow, gridTemplateColumns: "50px 1fr 1.5fr 80px 100px", backgroundColor: hoveredRow === `q${i}` ? "#f8fafc" : "#fff" }}
+                                    onMouseEnter={() => setHoveredRow(`q${i}`)} onMouseLeave={() => setHoveredRow(null)}>
+                                    <span style={{ fontSize: "13px", color: "#94a3b8", fontWeight: "600" }}>{i + 1}</span>
+                                    <span style={{ ...s.badge, backgroundColor: "#f3e8ff", color: "#7c3aed" }}>{q.topic || "—"}</span>
+                                    <span style={{ fontSize: "13px", color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.questionTitle}</span>
+                                    <span style={{ ...s.badge, backgroundColor: "#dcfce7", color: "#15803d" }}>{q.correctAnswer}</span>
+                                    <div style={{ display: "flex", gap: "6px" }}>
+                                        <button onClick={() => openEdit(q)} style={{ backgroundColor: "#eff6ff", color: "#3b82f6", border: "none", padding: "5px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}>✏️</button>
+                                        <button onClick={() => handleQDelete(q.id)} style={{ backgroundColor: "#fee2e2", color: "#b91c1c", border: "none", padding: "5px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}>🗑️</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </>)}
 
                 </main>

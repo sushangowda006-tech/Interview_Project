@@ -285,6 +285,16 @@ function Quiz() {
         const correct = label === questions[current].answer;
         if (correct) setScore(s => s + 1);
         setUserAnswers(prev => [...prev, { label, correct }]);
+        // Feature 7: bookmark wrong answers
+        if (!correct) {
+            const q = questions[current];
+            const bm = { q: q.q, options: q.options, answer: q.answer, topic: TOPICS[topicIdx].name };
+            const existing = JSON.parse(localStorage.getItem("bookmarks") || "[]");
+            const alreadySaved = existing.some(b => b.q === bm.q);
+            if (!alreadySaved) {
+                localStorage.setItem("bookmarks", JSON.stringify([...existing, bm]));
+            }
+        }
     };
 
     const handleNext = async () => {

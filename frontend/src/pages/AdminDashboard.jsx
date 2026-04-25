@@ -334,7 +334,7 @@ function AdminDashboard() {
 
                                 {/* Results header */}
                                 <div style={s.resHead}>
-                                    {["#", "Score", "Total Qs", "Percentage", "Performance"].map(h => (
+                                    {["#", "Topic", "Score", "Percentage", "Date"].map(h => (
                                         <span key={h} style={{ ...s.tableHCell }}>{h}</span>
                                     ))}
                                 </div>
@@ -348,15 +348,10 @@ function AdminDashboard() {
                                         return (
                                             <div key={r.id} style={{ ...s.resRow, backgroundColor: i % 2 === 0 ? "#fff" : "#faf5ff" }}>
                                                 <span style={{ fontSize: "13px", color: "#94a3b8", fontWeight: "600" }}>{i + 1}</span>
-                                                <span style={{ fontSize: "15px", fontWeight: "800", color: sc }}>{r.score}</span>
-                                                <span style={{ fontSize: "13px", color: "#64748b" }}>{r.totalQuestions}</span>
+                                                <span style={{ ...s.badge, backgroundColor: "#f3e8ff", color: "#7c3aed" }}>{r.topic || "—"}</span>
+                                                <span style={{ fontSize: "15px", fontWeight: "800", color: sc }}>{r.score}/{r.totalQuestions}</span>
                                                 <span style={{ ...s.badge, backgroundColor: scoreBg(pct), color: sc }}>{pct}% — {scoreLabel(pct)}</span>
-                                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                                    <div style={s.barTrack}>
-                                                        <div style={{ ...s.barFill, width: `${pct}%`, backgroundColor: sc }} />
-                                                    </div>
-                                                    <span style={{ fontSize: "12px", fontWeight: "700", color: sc, width: "36px" }}>{pct}%</span>
-                                                </div>
+                                                <span style={{ fontSize: "12px", color: "#64748b" }}>{r.submittedAt ? new Date(r.submittedAt).toLocaleString() : "—"}</span>
                                             </div>
                                         );
                                     })

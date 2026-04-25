@@ -74,7 +74,7 @@ function Login() {
         setLoading(true);
         try {
             const res = await API.post("/auth/login", { email, password });
-            const token = res.data.token;
+            const token = res.data;
             localStorage.setItem("token", token);
             const { role } = JSON.parse(atob(token.split(".")[1]));
             toast("Login successful! Welcome back 🎉", "success");

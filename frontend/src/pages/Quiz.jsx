@@ -262,9 +262,12 @@ function Quiz() {
         const filtered = existing.filter(e => !(e.name === entry.name && e.topic === entry.topic));
         localStorage.setItem("leaderboard", JSON.stringify([...filtered, entry].sort((a, b) => b.score - a.score)));
         try {
-            await API.post("/results/save", {
-                topic: TOPICS[topicIdx].name, score: finalScore,
-                totalQuestions: questions.length, percentage: pct,
+            await API.post("/results/submit", {
+                answers: {},
+                topic: TOPICS[topicIdx].name,
+                score: finalScore,
+                totalQuestions: questions.length,
+                percentage: pct,
             });
         } catch (err) { console.warn("Save failed:", err.message); }
     };

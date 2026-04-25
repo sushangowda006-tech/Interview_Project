@@ -504,6 +504,12 @@ const ACTION_CARDS = [
         color: "#eff6ff", iconBg: "#dbeafe", accent: "#0ea5e9", path: "/score-history",
     },
     {
+        icon: "📋",
+        title: "Interview Exam",
+        desc: "Take the official exam set by the admin and get evaluated.",
+        color: "#fdf4ff", iconBg: "#f3e8ff", accent: "#7c3aed", path: "/interview-exam",
+    },
+    {
         icon: "👤",
         title: "Profile",
         desc: "Update your info, view streak and topic performance.",

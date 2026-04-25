@@ -11,6 +11,7 @@ import Leaderboard from "./pages/Leaderboard";
 import ScoreHistory from "./pages/ScoreHistory";
 import QuizReview from "./pages/QuizReview";
 import Profile from "./pages/Profile";
+import InterviewExam from "./pages/InterviewExam";
 
 // ── Validates token exists AND is not expired ──
 function isAuthenticated() {
@@ -65,6 +66,7 @@ function App() {
             <Route path="/score-history" element={<Protected><ScoreHistory /></Protected>} />
             <Route path="/quiz/review"   element={<Protected><QuizReview /></Protected>} />
             <Route path="/profile"       element={<Protected><Profile /></Protected>} />
+            <Route path="/interview-exam" element={<Protected><InterviewExam /></Protected>} />
             <Route path="/admin/login"  element={<PublicOnly><AdminLogin /></PublicOnly>} />
             <Route path="/admin"        element={<AdminOnly><AdminDashboard /></AdminOnly>} />
             <Route path="*"            element={<Navigate to="/" replace />} />

@@ -32,6 +32,7 @@ public class AdminQuestionController {
 
         // 🔥 FIX HERE
         q.setQuestionTitle(updatedQuestion.getQuestionTitle());
+        q.setTopic(updatedQuestion.getTopic());
         q.setOptionA(updatedQuestion.getOptionA());
         q.setOptionB(updatedQuestion.getOptionB());
         q.setOptionC(updatedQuestion.getOptionC());

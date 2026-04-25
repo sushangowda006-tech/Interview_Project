@@ -12,6 +12,8 @@ public class Question {
 
     private String questionTitle;
 
+    private String topic;
+
     private String optionA;
     private String optionB;
     private String optionC;
@@ -37,6 +39,9 @@ public class Question {
 
     public String getQuestionTitle() { return questionTitle; }
     public void setQuestionTitle(String questionTitle) { this.questionTitle = questionTitle; }
+
+    public String getTopic() { return topic; }
+    public void setTopic(String topic) { this.topic = topic; }
 
     public String getOptionA() { return optionA; }
     public void setOptionA(String optionA) { this.optionA = optionA; }

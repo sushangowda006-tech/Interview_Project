@@ -28,10 +28,4 @@ public class QuestionController {
     public List<Question> getAllQuestions() {
         return questionService.getAllQuestions();
     }
-
-    // Get Questions by Topic
-    @GetMapping("/topic/{topic}")
-    public List<Question> getByTopic(@PathVariable String topic) {
-        return questionService.getQuestionsByTopic(topic);
-    }
 }

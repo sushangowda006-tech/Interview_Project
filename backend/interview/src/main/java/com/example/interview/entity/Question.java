@@ -10,8 +10,6 @@ public class Question {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String topic;
-
     private String questionTitle;
 
     private String optionA;
@@ -36,9 +34,6 @@ public class Question {
 
     // Getters and Setters
     public Long getId() { return id; }
-
-    public String getTopic() { return topic; }
-    public void setTopic(String topic) { this.topic = topic; }
 
     public String getQuestionTitle() { return questionTitle; }
     public void setQuestionTitle(String questionTitle) { this.questionTitle = questionTitle; }

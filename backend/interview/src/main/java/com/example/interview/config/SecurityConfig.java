@@ -1,7 +1,6 @@
 package com.example.interview.config;
 
 import com.example.interview.security.JwtFilter;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -9,45 +8,52 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
-    private final CorsConfigurationSource corsConfigurationSource;
 
-    public SecurityConfig(JwtFilter jwtFilter, CorsConfigurationSource corsConfigurationSource) {
+    public SecurityConfig(JwtFilter jwtFilter) {
         this.jwtFilter = jwtFilter;
-        this.corsConfigurationSource = corsConfigurationSource;
+    }
+
+    // ✅ BCrypt Bean (VERY IMPORTANT 🔥)
+    @Bean
+    public BCryptPasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(csrf -> csrf.disable())
 
+                // ✅ Stateless (JWT)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
                 .authorizeHttpRequests(auth -> auth
+
+                        // ✅ Public APIs
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/admin/**", "/results/admin/**").hasAuthority("ROLE_ADMIN")
+
+                        // ✅ ADMIN ONLY
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+
+                        // ✅ USER + ADMIN
                         .requestMatchers("/questions/**", "/results/**")
-                        .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+                        .hasAnyRole("USER", "ADMIN")
+
+                        // ✅ everything else
                         .anyRequest().authenticated()
                 )
 
+                // ✅ JWT filter
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
-    }
-
-    @Bean
-    public BCryptPasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
     }
 }
